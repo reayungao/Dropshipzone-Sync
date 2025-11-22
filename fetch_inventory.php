@@ -205,7 +205,8 @@ try {
                 // 1. Prep Data
                 $clean_item = [
                     'sku'   => $item['sku'],
-                    'stock' => (int)$item['stock_qty']
+                    'stock' => (int)$item['stock_qty'],
+                    'price' => isset($item['price']) ? round((float)$item['price'], 2) : 0.00
                 ];
 
                 // 2. Write Comma (if not first item)

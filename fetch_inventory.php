@@ -86,10 +86,13 @@ register_shutdown_function(function () use ($LOCK_FILE, $TEMP_FILE) {
 });
 
 /**
- * API Request Helper
+ * API Request Helper with Auto-Refresh
  */
-function make_api_request($url, $token, $attempt = 1)
+function make_api_request($url, AuthManager $auth, $attempt = 1, $force_refresh = false)
 {
+    // Get Token (Force refresh if this is a retry after 401)
+    $token = $auth->get_token($force_refresh);
+
     $ch = curl_init($url);
     $headers = [];
 
@@ -101,7 +104,7 @@ function make_api_request($url, $token, $attempt = 1)
         "User-Agent: DSZ-Integrator/1.0"
     ]);
 
-    // Capture Headers to check for Retry-After
+    // Capture Headers
     curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($curl, $header) use (&$headers) {
         $len = strlen($header);
         $header = explode(':', $header, 2);
@@ -120,25 +123,36 @@ function make_api_request($url, $token, $attempt = 1)
         log_message("cURL Error: $curl_error", 'ERROR');
         if ($attempt <= MAX_RETRIES) {
             sleep(2);
-            return make_api_request($url, $token, $attempt + 1);
+            return make_api_request($url, $auth, $attempt + 1, $force_refresh);
         }
         return null;
     }
 
-    // Rate Limit (429) -> FAIL FAST
+    // Rate Limit (429)
     if ($http_code === 429) {
         $retry_after = $headers['retry-after'] ?? 60;
-        log_message("Rate Limit Hit (429). Server requires wait of {$retry_after}s.", 'ERROR');
-        log_message("Aborting immediately to prevent IP ban extension.", 'ERROR');
-        return null; // Do not retry
+        log_message("Rate Limit Hit (429). Waiting {$retry_after}s.", 'WARNING');
+        sleep($retry_after); // Wait and retry once
+        return make_api_request($url, $auth, $attempt + 1, $force_refresh);
     }
 
-    // Server Error (500+) -> RETRY
+    // Token Expired (401) -> AUTO REFRESH
+    if ($http_code === 401) {
+        if (!$force_refresh) {
+            log_message("Token expired (401). Refreshing token and retrying...", 'WARNING');
+            return make_api_request($url, $auth, 1, true); // Retry with force_refresh = true
+        } else {
+            log_message("Token refresh failed. Still getting 401.", 'ERROR');
+            return null;
+        }
+    }
+
+    // Server Error (500+)
     if ($http_code >= 500) {
         log_message("Server Error $http_code. Retrying...", 'WARNING');
         if ($attempt <= MAX_RETRIES) {
             sleep(2);
-            return make_api_request($url, $token, $attempt + 1);
+            return make_api_request($url, $auth, $attempt + 1, $force_refresh);
         }
         return null;
     }
@@ -155,7 +169,7 @@ function make_api_request($url, $token, $attempt = 1)
 try {
     // 8. Authentication
     $auth = new AuthManager();
-    $token = $auth->get_token();
+    // Token is fetched inside make_api_request on demand
 
     // 9. Open Stream to Temp File
     $fp = fopen($TEMP_FILE, 'w');
@@ -178,7 +192,7 @@ try {
     while ($has_more_pages) {
         $url = $config['base_url'] . "/v2/products?page_no=$page&limit=" . BATCH_LIMIT;
 
-        $data = make_api_request($url, $token);
+        $data = make_api_request($url, $auth);
 
         if (!$data) {
             throw new Exception("Failed to download page $page. Aborting to prevent partial sync.");

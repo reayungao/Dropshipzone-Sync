@@ -14,17 +14,19 @@ class AuthManager
         $this->config = require __DIR__ . '/config.php';
     }
 
-    public function get_token()
+    public function get_token($force_refresh = false)
     {
-        // 1. Check if we have a valid cached token
-        $stored_data = $this->read_token_file();
-        if ($stored_data && $this->is_token_valid($stored_data)) {
-            if (php_sapi_name() == 'cli') echo "[Auth] Using cached token (Valid for " . round(($stored_data['expires_at'] - time()) / 60) . " more mins).\n";
-            return $stored_data['token'];
+        // 1. Check if we have a valid cached token (unless forced)
+        if (!$force_refresh) {
+            $stored_data = $this->read_token_file();
+            if ($stored_data && $this->is_token_valid($stored_data)) {
+                if (php_sapi_name() == 'cli') echo "[Auth] Using cached token (Valid for " . round(($stored_data['expires_at'] - time()) / 60) . " more mins).\n";
+                return $stored_data['token'];
+            }
         }
 
-        // 2. Request a new one if missing or expired
-        if (php_sapi_name() == 'cli') echo "[Auth] Token expired or missing. Requesting new one...\n";
+        // 2. Request a new one if missing, expired, or forced
+        if (php_sapi_name() == 'cli') echo "[Auth] Token expired, missing, or refresh forced. Requesting new one...\n";
         return $this->request_new_token();
     }
 

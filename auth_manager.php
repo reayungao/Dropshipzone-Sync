@@ -110,9 +110,16 @@ class AuthManager
             'expires_at' => time() + $expires_in
         ];
 
-        file_put_contents($this->token_file, json_encode($save_data));
+        // Atomic Write with Secure Permissions
+        $temp_file = $this->token_file . '.tmp';
+        if (file_put_contents($temp_file, json_encode($save_data)) !== false) {
+            chmod($temp_file, 0600); // Secure: Owner read/write only
+            rename($temp_file, $this->token_file);
+            if (php_sapi_name() == 'cli') echo "[Auth] Success! Token saved.\n";
+        } else {
+            if (php_sapi_name() == 'cli') echo "[Auth] Warning: Could not save token to file. Cache will not work.\n";
+        }
 
-        if (php_sapi_name() == 'cli') echo "[Auth] Success! Token saved.\n";
         return $token;
     }
 }

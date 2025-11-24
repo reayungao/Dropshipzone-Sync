@@ -31,8 +31,14 @@ function log_message($message, $level = 'INFO')
     // Output to screen (for manual runs)
     echo $log_entry;
 
+    // Log Rotation (Max 5MB)
+    $log_file = __DIR__ . '/sync.log';
+    if (file_exists($log_file) && filesize($log_file) > 5 * 1024 * 1024) {
+        rename($log_file, $log_file . '.bak'); // Keep one backup
+    }
+
     // Append to log file (for cron jobs)
-    file_put_contents(__DIR__ . '/sync.log', $log_entry, FILE_APPEND);
+    file_put_contents($log_file, $log_entry, FILE_APPEND);
 }
 
 // 4. Config Validation
@@ -52,22 +58,31 @@ $LOCK_FILE = __DIR__ . '/sync.lock';
 $TEMP_FILE = __DIR__ . '/temp_inventory.json';
 $FINAL_FILE = __DIR__ . '/dropshipzone_inventory.json';
 
-// 6. Concurrency Lock
-if (file_exists($LOCK_FILE)) {
-    // Self-Healing: If lock is > 2 hours old, assume crash and reset.
-    if (time() - filemtime($LOCK_FILE) > 7200) {
-        log_message("Stale lock found. Removing it.", 'WARNING');
-        unlink($LOCK_FILE);
-    } else {
-        log_message("Script is already running. Exiting.", 'INFO');
-        exit(0);
-    }
+// 6. Concurrency Lock (Atomic flock)
+$lock_fp = fopen($LOCK_FILE, 'c+'); // Open for reading and writing; create if not exists
+if (!$lock_fp) {
+    log_message("Could not open lock file permissions.", 'ERROR');
+    exit(1);
 }
-touch($LOCK_FILE);
 
-// 7. Robust Shutdown Handler (Ensures Lock File is ALWAYS removed)
-register_shutdown_function(function () use ($LOCK_FILE, $TEMP_FILE) {
-    // 1. Remove Lock File
+if (!flock($lock_fp, LOCK_EX | LOCK_NB)) {
+    // Could not acquire exclusive lock - another instance is running
+    log_message("Script is already running (Locked). Exiting.", 'INFO');
+    fclose($lock_fp);
+    exit(0);
+}
+
+// Lock acquired. Write current PID for debugging.
+ftruncate($lock_fp, 0);
+fwrite($lock_fp, (string)getmypid());
+
+// 7. Robust Shutdown Handler (Ensures Lock is released)
+register_shutdown_function(function () use ($lock_fp, $LOCK_FILE, $TEMP_FILE) {
+    // 1. Release Lock & Cleanup
+    if ($lock_fp) {
+        flock($lock_fp, LOCK_UN);
+        fclose($lock_fp);
+    }
     if (file_exists($LOCK_FILE)) {
         unlink($LOCK_FILE);
     }
@@ -163,7 +178,14 @@ function make_api_request($url, AuthManager $auth, $attempt = 1, $force_refresh 
         return null;
     }
 
-    return json_decode($response, true);
+    $decoded = json_decode($response, true);
+    if ($decoded === null && json_last_error() !== JSON_ERROR_NONE) {
+        log_message("JSON Decode Error: " . json_last_error_msg(), 'ERROR');
+        log_message("Raw Response Snippet: " . substr($response, 0, 500), 'ERROR');
+        return null;
+    }
+
+    return $decoded;
 }
 
 try {
@@ -204,20 +226,24 @@ try {
             foreach ($data['result'] as $item) {
                 // 1. Prep Data
                 $clean_item = [
-                    'sku'   => $item['sku'],
-                    'stock' => (int)$item['stock_qty'],
-                    'price' => isset($item['price']) ? round((float)$item['price'], 2) : 0.00
+                    'sku'   => $item['sku'] ?? 'UNKNOWN_SKU',
+                    'stock' => (int)($item['stock_qty'] ?? 0),
+                    'price' => isset($item['price']) ? number_format((float)$item['price'], 2, '.', '') : "0.00"
                 ];
 
                 // 2. Write Comma (if not first item)
                 if (!$is_first_item) {
-                    fwrite($fp, ",\n");
+                    if (fwrite($fp, ",\n") === false) {
+                        throw new Exception("Write error (comma): Disk full?");
+                    }
                 } else {
                     $is_first_item = false;
                 }
 
                 // 3. Write Object (Clean slashes)
-                fwrite($fp, "  " . json_encode($clean_item, JSON_UNESCAPED_SLASHES));
+                if (fwrite($fp, "  " . json_encode($clean_item, JSON_UNESCAPED_SLASHES)) === false) {
+                    throw new Exception("Write error (item): Disk full?");
+                }
                 $page_count++;
             }
             $total_count += $page_count;

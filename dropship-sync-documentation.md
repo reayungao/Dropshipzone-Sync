@@ -145,19 +145,6 @@ head -n 15 dropshipzone_inventory.json
 ## 7. Deployment Plan
 
 1. **Upload:** Place all scripts in `/home/username/dropship_sync/`.
-2. **Secure:** Apply `chmod 700` to folder and `chmod 600` to PHP/JSON files.
-3. **Test:** Run manually via SSH to confirm stability.
-4. **Automate:** Add a Cron Job in cPanel.
-
-### Cron Job Schedule
-
-- **Frequency:** Once Per Hour (`0 * * * *`)
-- **Command:** `/usr/local/bin/php /home/username/dropship_sync/run_sync.php`
-
----
-
-## 8. Future Roadmap (Phase 2: Matcher)
-
 Once Phase 1 (Fetch) is stable, we will implement `matcher.php` with the following logic:
 
 1. Load `dropshipzone_inventory.json` into memory (Hash Map).

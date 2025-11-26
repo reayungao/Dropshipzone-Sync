@@ -134,8 +134,8 @@ head -n 15 dropshipzone_inventory.json
 Add to cPanel or `/etc/crontab`:
 
 ```cron
-# Run inventory sync every hour
-0 * * * * /usr/local/bin/php /home/username/dropship_sync/run_sync.php
+# Run inventory sync every 6 hours
+0 */6 * * * /usr/local/bin/php /home/username/dropship_sync/run_sync.php
 ```
 
 ---

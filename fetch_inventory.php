@@ -32,14 +32,46 @@ function log_message($message, $level = 'INFO')
     // Output to screen (for manual runs)
     echo $log_entry;
 
-    // Log Rotation (Max 5MB)
-    $log_file = __DIR__ . '/sync.log';
-    if (file_exists($log_file) && filesize($log_file) > 5 * 1024 * 1024) {
-        rename($log_file, $log_file . '.bak'); // Keep one backup
+    // Ensure logs directory exists
+    $log_dir = __DIR__ . '/logs';
+    if (!is_dir($log_dir)) {
+        mkdir($log_dir, 0755, true);
     }
+
+    $log_file = $log_dir . '/sync.log';
+
+    // Log Rotation (Max 5MB, Keep 5 backups)
+    rotate_log_file($log_file, 5 * 1024 * 1024, 5);
 
     // Append to log file (for cron jobs)
     file_put_contents($log_file, $log_entry, FILE_APPEND);
+}
+
+/**
+ * Rotates a log file if it exceeds the size limit.
+ * Keeps $max_backups (e.g., file.log.1, file.log.2, ...).
+ */
+function rotate_log_file($file, $max_size, $max_backups)
+{
+    if (file_exists($file) && filesize($file) > $max_size) {
+        // Remove the oldest backup
+        $oldest_file = $file . '.' . $max_backups;
+        if (file_exists($oldest_file)) {
+            unlink($oldest_file);
+        }
+
+        // Shift existing backups (e.g., .4 -> .5, .3 -> .4)
+        for ($i = $max_backups - 1; $i >= 1; $i--) {
+            $current = $file . '.' . $i;
+            $next = $file . '.' . ($i + 1);
+            if (file_exists($current)) {
+                rename($current, $next);
+            }
+        }
+
+        // Rename current file to .1
+        rename($file, $file . '.1');
+    }
 }
 
 /**
@@ -62,8 +94,18 @@ function log_summary_safe($start_time, $total_count)
         }
 
         $timestamp = date('Y-m-d H:i:s');
-        $log_file = __DIR__ . '/sync_summary.log';
+
+        // Ensure logs directory exists
+        $log_dir = __DIR__ . '/logs';
+        if (!is_dir($log_dir)) {
+            mkdir($log_dir, 0755, true);
+        }
+
+        $log_file = $log_dir . '/sync_summary.log';
         $log_entry = "[$timestamp] SUCCESS | Duration: $duration_str | Products: $total_count\n";
+
+        // Log Rotation (Max 15MB, Keep 5 backups)
+        rotate_log_file($log_file, 15 * 1024 * 1024, 5);
 
         // Open file with append mode
         $fp = fopen($log_file, 'a');

@@ -1,7 +1,7 @@
 <?php
 // config.php
 return [
-    'email'    => 'info@mobiassist.com.au',
+    'email'    => 'INSERT DROPSHIPZONE API USER HERE',
     'password' => 'INSERT API PASSWORD HERE',
     'base_url' => 'https://api.dropshipzone.com.au',
     'logging'  => [
@@ -16,3 +16,4 @@ return [
         'rate_limit_sleep' => 6500000, // 6.5s
     ],
 ];
+

@@ -265,4 +265,25 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
+## 🤖 AI Transparency & Disclaimer
+
+### 🧠 The Stack
+This project was architected and developed with the assistance of next-generation AI coding tools, including **Google Antigravity**, **Gemini 3 Pro**, and **Jules**.
+
+### 🎯 Intent & Methodology
+I have utilized this project as a hands-on mechanism to master enterprise solution architecture. While I do not have extensive manual coding experience, I leveraged these advanced AI tools to design a solution that strictly adheres to industry best practices for **security**, **stability**, and **scalability**.
+
+This repository serves as a proof-of-concept for AI-assisted engineering. The code has been reviewed and tested for logic and flow, but it is ultimately an automated generation.
+
+### ⚠️ Important Usage Warning
+**Please Review Before Production:**
+While the architecture prioritizes "Safety First" (using atomic writes and strict rate limiting), this software is provided **"as is"**, without warranty of any kind.
+* **Users are responsible** for auditing the code before deploying it to a live server.
+* **Always backup** your WooCommerce database before running any inventory sync tools.
+* **No sensitive data** (API keys or passwords) was shared with the AI models during the generation of this codebase.
+
+*Use this tool at your own risk. The author is not liable for any data loss or inventory discrepancies.*
+
+---
+
 **Built with ❤️ for WooCommerce store owners who value data integrity.**

@@ -31,7 +31,32 @@ The system runs **independently** of the WordPress application layer, prioritizi
 
 ---
 
-## 🚀 Features
+## �️ Safety & Identification (Mixed Inventory)
+
+**Critical for stores with mixed products (Dropshipzone + Others).**
+
+This system is designed to be **flexible**. It does not assume every product in your store is from Dropshipzone. To prevent accidental data loss or zero-stocking of your other products, the system uses a **Strict Identification Protocol**:
+
+### How it works
+You configure *how* the script recognizes a Dropshipzone product. The script will **ignore** everything else.
+
+**Supported Identification Methods:**
+1.  **SKU Pattern:** Matches products starting with a prefix (e.g., `DSZ-*`).
+2.  **Product Tag:** Matches products with a specific tag (e.g., `Supplier: Dropshipzone`).
+3.  **Brand/Taxonomy:** Matches products assigned to a specific Brand or Category.
+4.  **Meta Field:** Matches a custom field value (e.g., `_supplier_id` = `123`).
+
+*This ensures that your other products are completely safe and untouched by the sync process.*
+
+> [!TIP]
+> **Best Practice: Use Unique Prefixes**
+> If you rename your Dropshipzone products to have a prefix (e.g., `DSZ-12345`), then **matching the SKU is enough**.
+>
+> If you use "Raw SKUs" (e.g., `12345`), there is a risk of **SKU Collision** (where another supplier uses the same SKU). In that case, you **MUST** use a secondary identifier like a Tag or Brand to be safe.
+
+---
+
+## �🚀 Features
 
 ### Phase 1: The Fetcher (Current)
 - ✅ JWT token authentication with 7-hour auto-refresh
@@ -207,12 +232,16 @@ Our implementation enforces 1-second delays between requests (max 60/min).
 - [x] Atomic file writes
 - [x] CLI testing suite
 
-### 🔄 Phase 2: The Matcher (In Progress)
-- [ ] Load JSON into memory hash map
-- [ ] Query WooCommerce product SKUs
-- [ ] Compare and identify stock changes
-- [ ] Implement circuit breaker logic
-- [ ] Batch update WooCommerce products
+### 🔄 Phase 2: The Matcher (Planned)
+- [ ] **Flexible Identification:** Configure *how* you identify Dropshipzone products:
+    - *Option A:* Product Tag (e.g., `Supplier: Dropshipzone`)
+    - *Option B:* Product Brand/Taxonomy
+    - *Option C:* SKU Prefix/Regex (e.g., `DSZ-*`)
+    - *Option D:* Custom Meta Field
+- [ ] **Store-First Logic:** Iterate through the *identified subset* of store products and look them up in the supplier feed.
+- [ ] **Safety:** Completely ignore all products that do not match the configured identifier.
+- [ ] **Circuit Breaker:** Abort if >X% (configurable) of the *identified* products are missing from the feed.
+- [ ] Batch update WooCommerce stock levels.
 
 ### 🔮 Phase 3: Monitoring (Planned)
 - [ ] Error logging to file

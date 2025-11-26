@@ -70,7 +70,7 @@ class AuthManager
         if (curl_errno($ch)) {
             throw new Exception("[Error] Network Error: " . curl_error($ch));
         }
-        curl_close($ch);
+        unset($ch);
 
         $body = json_decode($response, true);
 

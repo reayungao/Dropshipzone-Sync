@@ -8,6 +8,7 @@
  */
 
 // 1. Constants & Configuration
+$start_time = microtime(true); // Capture start time immediately
 const BATCH_LIMIT = 200;
 const TIMEOUT_SECONDS = 60;
 const RATE_LIMIT_SLEEP_US = 6500000; // 6.5s (Target ~550 req/hr to stay under 600/hr limit)
@@ -39,6 +40,45 @@ function log_message($message, $level = 'INFO')
 
     // Append to log file (for cron jobs)
     file_put_contents($log_file, $log_entry, FILE_APPEND);
+}
+
+/**
+ * Safe Summary Logging
+ * Logs successful syncs to a separate file with duration and stats.
+ * Safe means it will not crash the script if logging fails.
+ */
+function log_summary_safe($start_time, $total_count)
+{
+    try {
+        $duration = microtime(true) - $start_time;
+
+        // Format duration
+        if ($duration < 60) {
+            $duration_str = number_format($duration, 2) . "s";
+        } else {
+            $minutes = floor($duration / 60);
+            $seconds = $duration % 60;
+            $duration_str = "{$minutes}m {$seconds}s";
+        }
+
+        $timestamp = date('Y-m-d H:i:s');
+        $log_file = __DIR__ . '/sync_summary.log';
+        $log_entry = "[$timestamp] SUCCESS | Duration: $duration_str | Products: $total_count\n";
+
+        // Open file with append mode
+        $fp = fopen($log_file, 'a');
+        if ($fp) {
+            // Exclusive lock to prevent race conditions
+            if (flock($fp, LOCK_EX)) {
+                fwrite($fp, $log_entry);
+                flock($fp, LOCK_UN);
+            }
+            fclose($fp);
+        }
+    } catch (Exception $e) {
+        // If summary logging fails, just log to main error log but DO NOT stop the script
+        log_message("Failed to write to sync_summary.log: " . $e->getMessage(), 'WARNING');
+    }
 }
 
 // 4. Config Validation
@@ -131,7 +171,7 @@ function make_api_request($url, AuthManager $auth, $attempt = 1, $force_refresh 
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curl_error = curl_error($ch);
-    curl_close($ch);
+    unset($ch); // curl_close is deprecated in newer PHP versions; unset releases the handle.
 
     // Network Error
     if ($curl_error) {
@@ -287,6 +327,9 @@ try {
 
     log_message("Success! Inventory saved to $FINAL_FILE");
     log_message("Total Products Processed: $total_count");
+
+    // 13. Log Summary
+    log_summary_safe($start_time, $total_count);
 } catch (Exception $e) {
     log_message($e->getMessage(), 'ERROR');
     // Cleanup is handled by register_shutdown_function

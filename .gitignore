@@ -5,3 +5,4 @@ config.php
 *.json
 !composer.json
 !dropshipzone_inventory.json
+*.code-workspace

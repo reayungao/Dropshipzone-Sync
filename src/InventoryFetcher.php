@@ -20,9 +20,9 @@ class InventoryFetcher
         $this->logger = $logger;
         $this->auth = $auth;
 
-        $this->lockFile = __DIR__ . '/../../sync.lock';
-        $this->tempFile = __DIR__ . '/../../temp_inventory.json';
-        $this->finalFile = __DIR__ . '/../../dropshipzone_inventory.json';
+        $this->lockFile = __DIR__ . '/../sync.lock';
+        $this->tempFile = __DIR__ . '/../temp_inventory.json';
+        $this->finalFile = __DIR__ . '/../dropshipzone_inventory.json';
     }
 
     public function fetch()

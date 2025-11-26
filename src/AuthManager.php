@@ -14,7 +14,7 @@ class AuthManager
     {
         $this->config = $config;
         $this->logger = $logger;
-        $this->tokenFile = __DIR__ . '/../../token_store.json';
+        $this->tokenFile = __DIR__ . '/../token_store.json';
     }
 
     public function getToken($forceRefresh = false, $suppressLog = false)

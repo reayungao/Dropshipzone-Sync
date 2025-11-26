@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/src/autoload.php';
 
 use Dropshipzone\Sync\Logger;
 use Dropshipzone\Sync\AuthManager;

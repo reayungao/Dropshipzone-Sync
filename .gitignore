@@ -1,6 +1,4 @@
 vendor/
-logs/
-config.php
 *.lock
 *.json
 !composer.json

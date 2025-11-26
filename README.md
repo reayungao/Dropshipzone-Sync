@@ -79,6 +79,13 @@ cd /home/username/dropship_sync
 
 ### 3. Install Dependencies
 
+**Option A: Zero-Dependency (Recommended for Deployment)**
+This project includes a lightweight, manual autoloader in `src/autoload.php`.
+*   **No action required.** You can skip `composer install`.
+*   The script will run out-of-the-box on any PHP 7.4+ server.
+
+**Option B: Developer Mode (Optional)**
+If you wish to install additional libraries or run unit tests:
 ```bash
 composer install
 ```

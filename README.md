@@ -77,21 +77,13 @@ mkdir -p /home/username/dropship_sync
 cd /home/username/dropship_sync
 ```
 
-### 3. Upload Files
-
-Upload the following files to `/home/username/dropship_sync/`:
-- `config.php`
-- `auth_manager.php`
-- `fetch_inventory.php`
-
-### 4. Set Permissions
+### 3. Install Dependencies
 
 ```bash
-chmod 700 /home/username/dropship_sync
-chmod 600 /home/username/dropship_sync/*.php
+composer install
 ```
 
-### 5. Configure API Credentials
+### 4. Configure API Credentials
 
 Edit `config.php`:
 
@@ -101,6 +93,12 @@ return [
     'email'    => 'your_dropshipzone_email@example.com',
     'password' => 'your_dropshipzone_password',
     'base_url' => 'https://api.dropshipzone.com.au',
+    'logging'  => [
+        'path'        => __DIR__ . '/logs/sync.log',
+        'max_size'    => 5 * 1024 * 1024,
+        'max_backups' => 5,
+    ],
+    // ... other settings
 ];
 ?>
 ```
@@ -109,30 +107,18 @@ return [
 
 ## 🧪 Testing
 
-### Test Authentication
+### Run the Sync
 
 ```bash
-php auth_manager.php
+php run_sync.php
 ```
 
 **Expected Output:**
 ```
-[Auth] Success! New token acquired.
-```
-
-### Test Full Inventory Fetch
-
-```bash
-php fetch_inventory.php
-```
-
-**Expected Output:**
-```
-[Sync] Starting Streaming Download...
-   > Page 1 streamed (200 items).
-   > Page 2 streamed (200 items).
-[Sync] Download complete. Validating...
-[Success] Inventory saved to .../dropshipzone_inventory.json
+[2023-10-27 10:00:00] [INFO] Starting Streaming Download...
+[2023-10-27 10:00:01] [INFO] Page 1 streamed (200 items).
+...
+[2023-10-27 10:00:05] [INFO] Success! Inventory saved to .../dropshipzone_inventory.json
 ```
 
 ### Verify JSON Output
@@ -149,7 +135,7 @@ Add to cPanel or `/etc/crontab`:
 
 ```cron
 # Run inventory sync every hour
-0 * * * * /usr/local/bin/php /home/username/dropship_sync/fetch_inventory.php
+0 * * * * /usr/local/bin/php /home/username/dropship_sync/run_sync.php
 ```
 
 ---
@@ -160,8 +146,9 @@ Add to cPanel or `/etc/crontab`:
 /home/username/dropship_sync/
 │
 ├── config.php                      # API credentials (600)
-├── auth_manager.php                # JWT authentication handler (600)
-├── fetch_inventory.php             # Main fetcher script (600)
+├── run_sync.php                    # Main entry point (600)
+├── src/                            # Class files (InventoryFetcher, AuthManager, Logger)
+├── vendor/                         # Autoloader
 ├── token_store.json                # Auto-generated token cache (600)
 ├── sync.lock                       # Auto-generated lock file (600)
 └── dropshipzone_inventory.json     # Product catalog output (644)

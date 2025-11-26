@@ -38,8 +38,9 @@ To ensure maximum security, all integration scripts must reside **outside the pu
 | File Name | Permission | Description |
 |-----------|------------|-------------|
 | `config.php` | 600 | Stores sensitive API credentials. |
-| `auth_manager.php` | 600 | Handles JWT token retrieval, caching, and rotation. |
-| `fetch_inventory.php` | 600 | The main script for Phase 1 (Downloads data). |
+| `run_sync.php` | 600 | Main entry point script. |
+| `src/` | 700 | Directory containing class files. |
+| `vendor/` | 700 | Directory containing autoloader. |
 | `token_store.json` | 600 | Auto-generated cache for the active API token. |
 | `sync.lock` | 600 | Auto-generated lock file to prevent overlapping cron jobs. |
 | `dropshipzone_inventory.json` | 644 | The output file containing the raw product data. |
@@ -52,7 +53,7 @@ The parent folder `/dropshipzone_sync` must be set to **700** (User Read/Write/E
 
 ## 4. Technical Implementation Details
 
-### A. Authentication (`auth_manager.php`)
+### A. Authentication (`src/AuthManager.php`)
 
 **Endpoint:** `POST https://api.dropshipzone.com.au/auth`
 
@@ -61,7 +62,7 @@ The parent folder `/dropshipzone_sync` must be set to **700** (User Read/Write/E
 - **Buffer:** The script forces a refresh at 7 hours to ensure long-running jobs do not fail mid-sync.
 - **Caching:** Tokens are stored in `token_store.json` to avoid redundant login requests.
 
-### B. The Fetcher (`fetch_inventory.php`)
+### B. The Fetcher (`src/InventoryFetcher.php`)
 
 This script is the backbone of the integration. It implements several "Enterprise-Grade" stability features:
 
@@ -94,7 +95,18 @@ This script is the backbone of the integration. It implements several "Enterpris
 return [
     'email'    => 'YOUR_DROPSHIPZONE_EMAIL',
     'password' => 'YOUR_DROPSHIPZONE_PASSWORD',
-    'base_url' => 'https://api.dropshipzone.com.au', // V2 API Endpoint
+    'base_url' => 'https://api.dropshipzone.com.au',
+    'logging'  => [
+        'path'        => __DIR__ . '/logs/sync.log',
+        'max_size'    => 5 * 1024 * 1024,
+        'max_backups' => 5,
+    ],
+    'sync' => [
+        'batch_limit' => 200,
+        'timeout'     => 60,
+        'retries'     => 5,
+        'rate_limit_sleep' => 6500000,
+    ],
 ];
 ?>
 ```
@@ -105,37 +117,22 @@ return [
 
 Since this is an external script, it can be tested via CLI (Command Line Interface) without affecting the live WordPress site.
 
-### Step 1: Authentication Check
-
-Run the auth manager directly to verify credentials.
+### Step 1: Run the Sync
 
 ```bash
-php auth_manager.php
+php run_sync.php
 ```
 
 **Expected Output:**
 ```
-[Auth] Success! New token acquired.
+[INFO] Starting Streaming Download...
+[INFO] Page 1 streamed (200 items).
+[INFO] Page 2 streamed (200 items).
+[INFO] Download complete. Validating...
+[INFO] Success! Inventory saved to .../dropshipzone_inventory.json
 ```
 
-### Step 2: Full Fetch Test
-
-Run the fetch script to download the catalog.
-
-```bash
-php fetch_inventory.php
-```
-
-**Expected Output:**
-```
-[Sync] Starting Streaming Download...
-   > Page 1 streamed (200 items).
-   > Page 2 streamed (200 items).
-[Sync] Download complete. Validating...
-[Success] Inventory saved to .../dropshipzone_inventory.json
-```
-
-### Step 3: Verify Data Integrity
+### Step 2: Verify Data Integrity
 
 Check the head of the generated file to ensure valid JSON and correct fields (sku, stock).
 
@@ -155,7 +152,7 @@ head -n 15 dropshipzone_inventory.json
 ### Cron Job Schedule
 
 - **Frequency:** Once Per Hour (`0 * * * *`)
-- **Command:** `/usr/local/bin/php /home/username/dropship_sync/fetch_inventory.php`
+- **Command:** `/usr/local/bin/php /home/username/dropship_sync/run_sync.php`
 
 ---
 

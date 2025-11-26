@@ -1,0 +1,19 @@
+{
+    "name": "dropshipzone/sync",
+    "description": "Enterprise-grade inventory synchronization for Dropshipzone to WooCommerce.",
+    "type": "project",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Dropshipzone\\Sync\\": "src/"
+        }
+    },
+    "require": {
+        "php": ">=7.4",
+        "ext-curl": "*",
+        "ext-json": "*"
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}

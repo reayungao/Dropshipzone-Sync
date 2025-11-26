@@ -17,13 +17,15 @@ class AuthManager
         $this->tokenFile = __DIR__ . '/../../token_store.json';
     }
 
-    public function getToken($forceRefresh = false)
+    public function getToken($forceRefresh = false, $suppressLog = false)
     {
         // 1. Check cached token
         if (!$forceRefresh) {
             $storedData = $this->readTokenFile();
             if ($storedData && $this->isTokenValid($storedData)) {
-                $this->logger->info("Using cached token (Valid for " . round(($storedData['expires_at'] - time()) / 60) . " more mins).");
+                if (!$suppressLog) {
+                    $this->logger->info("Using cached token (Valid for " . round(($storedData['expires_at'] - time()) / 60) . " more mins).");
+                }
                 return $storedData['token'];
             }
         }

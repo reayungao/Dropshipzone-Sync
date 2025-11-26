@@ -86,6 +86,9 @@ class InventoryFetcher
         $this->logger->info("Starting Streaming Download...");
         $this->logger->info("Target: " . $this->config['base_url'] . "/v2/products");
 
+        // Pre-fetch token to log status once (and ensure we have one before starting)
+        $this->auth->getToken();
+
         while ($hasMorePages) {
             $url = $this->config['base_url'] . "/v2/products?page_no=$page&limit=" . $this->config['sync']['batch_limit'];
 
@@ -152,7 +155,7 @@ class InventoryFetcher
 
     private function makeApiRequest($url, $attempt = 1, $forceRefresh = false)
     {
-        $token = $this->auth->getToken($forceRefresh);
+        $token = $this->auth->getToken($forceRefresh, true);
 
         $ch = curl_init($url);
         $headers = [];
